@@ -1,4 +1,4 @@
-FROM node:22-alpine
+FROM node:23-alpine
 
 # Install nginx
 RUN echo "http://dl-4.alpinelinux.org/alpine/v3.3/main" >> /etc/apk/repositories && \

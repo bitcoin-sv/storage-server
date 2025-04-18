@@ -28,7 +28,6 @@ perl -E'
     SERVER_PRIVATE_KEY \
     GCP_STORAGE_CREDS \
     GCP_PROJECT_ID \
-    GCP__NAME \
     GCP_BUCKET_NAME \
     WALLET_STORAGE_URL \
     BSV_NETWORK \
@@ -36,3 +35,8 @@ perl -E'
 
 echo "Built! Contents of $1:"
 cat $1
+
+echo "HOSTING_DOMAIN: $HOSTING_DOMAIN" >> $2
+echo "ADMIN_TOKEN: $ADMIN_TOKEN" >> $2
+echo "Built! Contents of $2:"
+cat $2

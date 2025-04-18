@@ -1,1 +1,8 @@
-[{"maxAgeSeconds": 3600, "method": ["GET", "HEAD", "DELETE", "PUT", "POST"], "origin": ["*"], "responseHeader": ["Content-Type", "access-control-allow-origin"]}]
+[
+    {
+        "maxAgeSeconds": 3600,
+        "method": [ "GET", "HEAD", "DELETE", "PUT", "POST" ],
+        "origin": [ "*" ],
+        "responseHeader": [ "Content-Type", "access-control-allow-origin" ]
+    }
+]

@@ -1,9 +1,5 @@
 dispatch:
-  - url: "staging-hashbrown.babbage.systems/*"
+  - url: "staging-uhrp.babbage.systems/*"
     service: staging
-  - url: "hashbrown.babbage.systems/*"
-    service: default
-  - url: "staging-nanostore.babbage.systems/*"
-    service: staging
-  - url: "nanostore.babbage.systems/*"
+  - url: "uhrp.babbage.systems/*"
     service: default

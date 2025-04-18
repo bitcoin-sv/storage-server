@@ -1,4 +1,5 @@
 name: Deployment
+
 on:
   push:
     branches:
@@ -6,45 +7,58 @@ on:
       - production
 
 env:
-  CURRENT_BRANCH: ${{ github.ref_name =='production' && 'production' || 'master' }}
-  GCR_HOST: us.gcr.io
-  GOOGLE_PROJECT_ID: babbage-private
-  GCR_IMAGE_NAME: nanostore
-  
+  CURRENT_BRANCH: ${{ github.ref_name == 'production' && 'production' || 'master' }}
+  GCR_HOST: ${{ github.ref_name == 'production' && secrets.PROD_GCR_HOST || secrets.STAGING_GCR_HOST }}
+  GOOGLE_PROJECT_ID: ${{ github.ref_name == 'production' && secrets.PROD_GOOGLE_PROJECT_ID || secrets.STAGING_GOOGLE_PROJECT_ID }}
+  GCR_IMAGE_NAME: ${{ github.ref_name == 'production' && secrets.PROD_GCR_IMAGE_NAME || secrets.STAGING_GCR_IMAGE_NAME }}
+  GCP_BUCKET_NAME: ${{ github.ref_name == 'production' && secrets.PROD_GCP_BUCKET_NAME || secrets.STAGING_GCP_BUCKET_NAME }}
 jobs:
   build:
     name: Deploy
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - uses: RafikFarhad/push-to-gcr-github-action@v4.1
+      - uses: RafikFarhad/push-to-gcr-github-action@v5-beta
         with:
-          gcloud_service_key: ${{ secrets.DOCKER_REGISTRY_PUSH_KEY }}
+          gcloud_service_key: ${{ github.ref_name == 'production' && secrets.PROD_GCR_PUSH_KEY || secrets.STAGING_GCR_PUSH_KEY }}
           registry: ${{ env.GCR_HOST }}
           project_id: ${{ env.GOOGLE_PROJECT_ID }}
           image_name: ${{ env.GCR_IMAGE_NAME }}
           image_tag: ${{ env.CURRENT_BRANCH }}-${{ github.sha }}
       - name: "Create service description file"
-        run: "./scripts/mkenv.sh service.${{ env.CURRENT_BRANCH }}.yaml"
+        run: "./scripts/mkenv.sh service.${{ env.CURRENT_BRANCH }}.yaml ./notifier/${{ env.CURRENT_BRANCH == 'production' && 'prod' || 'staging' }}.functions.env.yaml"
         env:
           IMAGE: "${{ env.GCR_HOST }}/${{ env.GOOGLE_PROJECT_ID }}/${{ env.GCR_IMAGE_NAME }}:${{ env.CURRENT_BRANCH }}-${{ github.sha }}"
-          SERVICE: ${{ env.CURRENT_BRANCH =='production' && 'prod-nanostore' || 'staging-nanostore' }}
-          NODE_ENV:     ${{ env.CURRENT_BRANCH =='production' && secrets.PROD_NODE_ENV || secrets.STAGING_NODE_ENV }}
+          SERVICE: ${{ env.CURRENT_BRANCH == 'production' && 'prod-uhrp' || 'staging-uhrp' }}
+          NODE_ENV: ${{ env.CURRENT_BRANCH == 'production' && secrets.PROD_NODE_ENV || secrets.STAGING_NODE_ENV }}
           HOSTING_DOMAIN: ${{ env.CURRENT_BRANCH == 'production' && secrets.PROD_HOSTING_DOMAIN || secrets.STAGING_HOSTING_DOMAIN }}
           MIGRATE_KEY: ${{ env.CURRENT_BRANCH == 'production' && secrets.PROD_MIGRATE_KEY || secrets.STAGING_MIGRATE_KEY }}
           PRICE_PER_GB_MO: ${{ env.CURRENT_BRANCH == 'production' && secrets.PROD_PRICE_PER_GB_MO || secrets.STAGING_PRICE_PER_GB_MO }}
-          GCP_STORAGE_CREDS: ${{ env.CURRENT_BRANCH == 'production' && secrets.PROD_GCP_STORAGE_CREDS || secrets.STAGING_GCP_STORAGE_CREDS }}
-          GCP_BUCKET_NAME: ${{ env.CURRENT_BRANCH == 'production' && secrets.PROD_GCP_BUCKET_NAME || secrets.STAGING_GCP_BUCKET_NAME }}
-          GCP_PROJECT_ID: ${{ env.CURRENT_BRANCH == 'production' && secrets.PROD_GCP_PROJECT_ID || secrets.STAGING_GCP_PROJECT_ID }}
+          GCP_STORAGE_CREDS: ${{ github.ref_name == 'production' && secrets.PROD_GCP_STORAGE_CREDS || secrets.STAGING_GCP_STORAGE_CREDS }}
+          GCP_BUCKET_NAME: ${{ env.GCP_BUCKET_NAME }}
+          GCP_PROJECT_ID: ${{ env.GOOGLE_PROJECT_ID }}
           SERVER_PRIVATE_KEY: ${{ env.CURRENT_BRANCH == 'production' && secrets.PROD_SERVER_PRIVATE_KEY || secrets.STAGING_SERVER_PRIVATE_KEY }}
           MIN_HOSTING_MINUTES: ${{ env.CURRENT_BRANCH == 'production' && secrets.PROD_MIN_HOSTING_MINUTES || secrets.STAGING_MIN_HOSTING_MINUTES }}
           ADMIN_TOKEN: ${{ env.CURRENT_BRANCH == 'production' && secrets.PROD_ADMIN_TOKEN || secrets.STAGING_ADMIN_TOKEN }}
           WALLET_STORAGE_URL: ${{ env.CURRENT_BRANCH == 'production' && secrets.PROD_WALLET_STORAGE_URL || secrets.STAGING_WALLET_STORAGE_URL }}
           BSV_NETWORK: ${{ env.CURRENT_BRANCH == 'production' && secrets.PROD_BSV_NETWORK || secrets.STAGING_BSV_NETWORK }}
-          HTTP_PORT: ${{      env.CURRENT_BRANCH =='production' && secrets.HTTP_PORT || secrets.HTTP_PORT }}
-      - uses: google-github-actions/auth@v1
+          HTTP_PORT: ${{ env.CURRENT_BRANCH == 'production' && secrets.PROD_HTTP_PORT || secrets.STAGING_HTTP_PORT }}
+      - name: "Authenticate with GCP"
+        id: auth
+        uses: google-github-actions/auth@v1
         with:
-          credentials_json: ${{ secrets.gcp_deploy_creds }}
+          credentials_json: ${{ env.CURRENT_BRANCH == 'production' && secrets.PROD_GCP_STORAGE_CREDS || secrets.STAGING_GCP_STORAGE_CREDS }}
+      - name: "Determine bucket region from Cloud Storage"
+        id: bucket
+        run: |
+          REGION=$(gcloud storage buckets describe gs://$GCP_BUCKET_NAME --format='value(location)' | tr '[:upper:]' '[:lower:]')
+          echo "Bucket $GCP_BUCKET_NAME is in region: $REGION"
+          echo "region=$REGION" >> "$GITHUB_OUTPUT"
       - uses: google-github-actions/deploy-cloudrun@v1
         with:
           metadata: "service.${{ env.CURRENT_BRANCH }}.yaml"
+          region: ${{ steps.bucket.outputs.region }}
+      - name: "Deploy the notifier function"
+        run: |
+          cd notifier 
+          ./deploy${{ env.CURRENT_BRANCH == 'production' && 'Prod' || 'Staging' }}.sh "$GCP_BUCKET_NAME"

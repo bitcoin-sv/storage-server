@@ -26,9 +26,11 @@ services:
       HTTP_PORT: 8080
       PRICE_PER_GB_MO: 0.03
       UHRP_HOST_PRIVATE_KEY: '5KKGHf1dZpJ1L4aQTGCrVL4q3y5iwbcf9YcWS3oXynrWjaxS2LD'
-      SERVER_PRIVATE_KEY: 'ab93af021feaab26a9adff360fc8a32da645539985a0adfcc2cecbfe76bb4e41'
+      SERVER_PRIVATE_KEY: '53a6156d87fd51d00095e82b59d20354b31786206462dbc8bbf5aeaa3a2a9309'
       SERVER_XPRIV: 'xprv9s21ZrQH143K3GN3VANh6bt72CgqhysD35WrbZWq7zJMg9Jegv7qPhgCy1To8PHW8fJoa4EDLCx73FK8Ljfg64mW9XK9g13xkMwZKQPWZ9Y'
       MIN_HOSTING_MINUTES: 15
-      GCP_BUCKET_NAME: 'staging-hashbrown.babbage.systems'
-      GCP_PROJECT_ID: 'babbage-hashbrown'
-      GOOGLE_APPLICATION_CREDENTIALS: '/app/storage-creds.json'
+      GCP_BUCKET_NAME: 'staging-uhrp'
+      GCP_PROJECT_ID: 'babbage-uhrp'
+      GOOGLE_APPLICATION_CREDENTIALS: '/app/service-account.json'
+    command: npm run dev
+

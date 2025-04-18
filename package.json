@@ -27,7 +27,7 @@
   },
   "scripts": {
     "start": "ts-node src/index.ts",
-    "dev": "nodemon --inspect=0.0.0.0 src/index.ts --watch .env --watch src --exec \"ts-node\"",
+    "dev": "nodemon --watch .env --watch src --exec \"node --inspect=0.0.0.0 -r ts-node/register src/index.ts\"",
     "build": "tsc",
     "test": "jest",
     "test:watch": "jest --watch",
